@@ -17,21 +17,29 @@ namespace PackageBindingRedirection
 
         public ITaskItem[] InputFiles { get; set; }
 
+        public string[] Exclusions { get; set; }
+
         [Required, Output]
         public ITaskItem OutputAppConfigFile { get; set; }
 
         private XDocument _document;
         private XElement _assemblyBindingElement;
-        private readonly HashSet<string> _presetAssemblies = new HashSet<string>();
+        private readonly HashSet<string> _excludedAssemblyNames = new HashSet<string>();
 
         public override bool Execute()
         {
+            if (this.Exclusions != null)
+            {
+                foreach (var x in this.Exclusions)
+                    this._excludedAssemblyNames.Add(x);
+            }
+
             this.LoadAppConfig();
 
             var assemblies = new SortedDictionary<string, AssemblyNameInfo>();
             foreach (var x in this.EnumerateAssemblyNameInfo())
             {
-                if (!this._presetAssemblies.Contains(x.Name) &&
+                if (!this._excludedAssemblyNames.Contains(x.Name) &&
                     (!assemblies.TryGetValue(x.Name, out var y) || x.Version > y.Version))
                     assemblies[x.Name] = x;
             }
@@ -76,7 +84,7 @@ namespace PackageBindingRedirection
                     foreach (var x in assemblyNames)
                     {
                         if (!string.IsNullOrEmpty(x))
-                            this._presetAssemblies.Add(x);
+                            this._excludedAssemblyNames.Add(x);
                     }
                 }
 
