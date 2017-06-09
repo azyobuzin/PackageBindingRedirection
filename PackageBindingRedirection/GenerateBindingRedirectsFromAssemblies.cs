@@ -19,7 +19,7 @@ namespace PackageBindingRedirection
 
         public string[] Exclusions { get; set; }
 
-        [Required, Output]
+        [Required]
         public ITaskItem OutputAppConfigFile { get; set; }
 
         private XDocument _document;
@@ -45,9 +45,6 @@ namespace PackageBindingRedirection
             }
 
             this.WriteOutput(assemblies.Values);
-
-            if (this.AppConfigFile != null)
-                this.AppConfigFile.CopyMetadataTo(this.OutputAppConfigFile);
 
             return true;
         }
@@ -103,6 +100,8 @@ namespace PackageBindingRedirection
 
         private IEnumerable<AssemblyNameInfo> EnumerateAssemblyNameInfo()
         {
+            if (this.InputFiles == null) yield break;
+
             foreach (var inputItem in this.InputFiles)
             {
                 var fullPath = inputItem.GetMetadata("FullPath");

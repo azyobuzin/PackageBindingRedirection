@@ -1,0 +1,60 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(PackageBindingRedirectionTasksAssembly)' == ''">
+    <PackageBindingRedirectionTasksAssembly Condition="'$(MSBuildRuntimeType)' == 'Core'">$(MSBuildThisFileDirectory)core\PackageBindingRedirection.dll</PackageBindingRedirectionTasksAssembly>
+    <PackageBindingRedirectionTasksAssembly Condition="'$(MSBuildRuntimeType)' != 'Core'">$(MSBuildThisFileDirectory)full\PackageBindingRedirection.dll</PackageBindingRedirectionTasksAssembly>
+  </PropertyGroup>
+
+  <UsingTask TaskName="PackageBindingRedirection.GenerateBindingRedirectsFromAssemblies" AssemblyFile="$(PackageBindingRedirectionTasksAssembly)" />
+
+  <Target Name="_PreparePackageBindingRedirection">
+    <PropertyGroup>
+      <_PackageBindingRedirectionIntermediateAppConfig>$(IntermediateOutputPath)$(MSBuildProjectFile).PackageBindingRedirection.config</_PackageBindingRedirectionIntermediateAppConfig>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="PackageBindingRedirectionForNetCore"
+      AfterTargets="_ComputeLockFileReferences"
+      DependsOnTargets="_PreparePackageBindingRedirection">
+    <ItemGroup>
+      <PackageBindingRedirectionInputFiles Include="@(ResolvedCompileFileDefinitions)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="PackageBindingRedirectionForMicrosoftNuGet"
+      AfterTargets="ResolveNuGetPackageAssets"
+      DependsOnTargets="_PreparePackageBindingRedirection">
+    <ItemGroup>
+      <PackageBindingRedirectionInputFiles Include="@(ReferenceCopyLocalPaths)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="PackageBindingRedirection"
+      Inputs="$(MSBuildAllProjects);$(AppConfig)"
+      Outputs="$(_PackageBindingRedirectionIntermediateAppConfig)"
+      AfterTargets="PackageBindingRedirectionForNetCore;PackageBindingRedirectionForMicrosoftNuGet">
+    <GenerateBindingRedirectsFromAssemblies
+      AppConfigFile="@(AppConfigWithTargetPath)"
+      InputFiles="@(PackageBindingRedirectionInputFiles)"
+      Exclusions="$(PackageBindingRedirectionExclusions)"
+      OutputAppConfigFile="$(_PackageBindingRedirectionIntermediateAppConfig)" />
+    <ItemGroup>
+      <FileWrites Include="$(_PackageBindingRedirectionIntermediateAppConfig)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="AfterPackageBindingRedirection" AfterTargets="PackageBindingRedirection">
+    <PropertyGroup>
+      <AppConfig>$(_PackageBindingRedirectionIntermediateAppConfig)</AppConfig>
+    </PropertyGroup>
+    <ItemGroup>
+      <AppConfigWithTargetPath Remove="@(AppConfigWithTargetPath)" />
+      <AppConfigWithTargetPath Include="$(AppConfig)">
+        <TargetPath>$(TargetFileName).config</TargetPath>
+      </AppConfigWithTargetPath>
+    </ItemGroup>
+  </Target>
+</Project>
